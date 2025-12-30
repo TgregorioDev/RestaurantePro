@@ -28,14 +28,17 @@ export function useOrders(tableId?: string) {
     queryKey: ['active-order', tableId],
     queryFn: async () => {
       if (!tableId) return null;
-      
+
+      // Consider the latest order that is still in progress (open) or awaiting finalization (paid)
       const { data, error } = await supabase
         .from('orders')
         .select('*')
         .eq('table_id', tableId)
-        .eq('status', 'open')
+        .in('status', ['open', 'paid'])
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
-      
+
       if (error) throw error;
       return data as Order | null;
     },
