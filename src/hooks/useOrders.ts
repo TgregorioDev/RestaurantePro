@@ -1,8 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Order, OrderItem, OrderStatus } from '@/types/database';
+import { Order, OrderItem, OrderStatus, SelectedExtra, Product } from '@/types/database';
 import { toast } from 'sonner';
 import { useEffect } from 'react';
+import { Json } from '@/integrations/supabase/types';
 
 export function useOrders(tableId?: string) {
   const queryClient = useQueryClient();
@@ -129,6 +130,10 @@ export function useOrders(tableId?: string) {
   };
 }
 
+export interface OrderItemWithProduct extends Omit<OrderItem, 'product'> {
+  product: Product;
+}
+
 export function useOrderItems(orderId?: string) {
   const queryClient = useQueryClient();
 
@@ -144,7 +149,15 @@ export function useOrderItems(orderId?: string) {
         .order('created_at');
       
       if (error) throw error;
-      return data as (OrderItem & { product: { id: string; name: string; price: number; extras: string[] } })[];
+      
+      return (data ?? []).map(item => ({
+        ...item,
+        selected_extras: (item.selected_extras as unknown as SelectedExtra[]) ?? [],
+        product: item.product ? {
+          ...item.product,
+          extras: (item.product.extras as unknown as { name: string; price: number }[]) ?? []
+        } : undefined
+      })) as OrderItemWithProduct[];
     },
     enabled: !!orderId,
   });
@@ -154,14 +167,24 @@ export function useOrderItems(orderId?: string) {
       order_id: string;
       product_id: string;
       quantity: number;
-      extras: string[];
+      selected_extras: SelectedExtra[];
+      base_price_at_order: number;
       unit_price: number;
       total_price: number;
       notes?: string;
     }) => {
       const { data, error } = await supabase
         .from('order_items')
-        .insert(item)
+        .insert({
+          order_id: item.order_id,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          selected_extras: item.selected_extras as unknown as Json,
+          base_price_at_order: item.base_price_at_order,
+          unit_price: item.unit_price,
+          total_price: item.total_price,
+          notes: item.notes,
+        })
         .select()
         .single();
       
@@ -178,10 +201,10 @@ export function useOrderItems(orderId?: string) {
   });
 
   const updateItem = useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<OrderItem> & { id: string }) => {
+    mutationFn: async ({ id, quantity, total_price }: { id: string; quantity: number; total_price: number }) => {
       const { data, error } = await supabase
         .from('order_items')
-        .update(updates)
+        .update({ quantity, total_price })
         .eq('id', id)
         .select()
         .single();

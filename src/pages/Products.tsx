@@ -1,11 +1,15 @@
+import { useState } from 'react';
 import { Layout } from '@/components/Layout';
 import { ProductCard } from '@/components/ProductCard';
 import { CreateProductDialog } from '@/components/CreateProductDialog';
+import { EditProductDialog } from '@/components/EditProductDialog';
 import { useProducts } from '@/hooks/useProducts';
+import { Product } from '@/types/database';
 import { Loader2, UtensilsCrossed } from 'lucide-react';
 
 export default function Products() {
-  const { products, isLoading, createProduct, deleteProduct } = useProducts();
+  const { products, isLoading, createProduct, updateProduct, deleteProduct } = useProducts();
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   return (
     <Layout>
@@ -47,12 +51,21 @@ export default function Products() {
               <ProductCard
                 key={product.id}
                 product={product}
+                onEdit={() => setEditingProduct(product)}
                 onDelete={() => deleteProduct.mutate(product.id)}
               />
             ))}
           </div>
         )}
       </div>
+
+      <EditProductDialog
+        product={editingProduct}
+        open={!!editingProduct}
+        onOpenChange={(open) => !open && setEditingProduct(null)}
+        onSubmit={(product) => updateProduct.mutate(product)}
+        isLoading={updateProduct.isPending}
+      />
     </Layout>
   );
 }

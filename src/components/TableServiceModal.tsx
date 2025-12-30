@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Table, Product } from '@/types/database';
+import { Table, Product, ProductExtra, SelectedExtra } from '@/types/database';
 import { useOrders, useOrderItems } from '@/hooks/useOrders';
 import { useTables } from '@/hooks/useTables';
 import { useProducts } from '@/hooks/useProducts';
@@ -47,20 +47,30 @@ interface TableServiceModalProps {
 interface AddProductModalProps {
   product: Product;
   onClose: () => void;
-  onAdd: (quantity: number, extras: string[], notes?: string) => void;
+  onAdd: (quantity: number, selectedExtras: SelectedExtra[], notes?: string) => void;
 }
 
 function AddProductModal({ product, onClose, onAdd }: AddProductModalProps) {
   const [quantity, setQuantity] = useState(1);
-  const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
+  const [selectedExtras, setSelectedExtras] = useState<SelectedExtra[]>([]);
   const [notes, setNotes] = useState('');
+
+  const handleToggleExtra = (extra: ProductExtra, checked: boolean) => {
+    if (checked) {
+      setSelectedExtras([...selectedExtras, { name: extra.name, price: extra.price }]);
+    } else {
+      setSelectedExtras(selectedExtras.filter((e) => e.name !== extra.name));
+    }
+  };
 
   const handleAdd = () => {
     onAdd(quantity, selectedExtras, notes || undefined);
     onClose();
   };
 
-  const totalPrice = product.price * quantity;
+  const extrasTotal = selectedExtras.reduce((sum, e) => sum + e.price, 0);
+  const unitPrice = product.price + extrasTotal;
+  const totalPrice = unitPrice * quantity;
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -70,9 +80,16 @@ function AddProductModal({ product, onClose, onAdd }: AddProductModalProps) {
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="flex items-center justify-between">
-            <span className="text-2xl font-bold text-primary">
-              {formatCurrency(product.price)}
-            </span>
+            <div>
+              <span className="text-2xl font-bold text-primary">
+                {formatCurrency(product.price)}
+              </span>
+              {extrasTotal > 0 && (
+                <span className="text-sm text-muted-foreground ml-2">
+                  + {formatCurrency(extrasTotal)} adicionais
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
@@ -96,22 +113,21 @@ function AddProductModal({ product, onClose, onAdd }: AddProductModalProps) {
             <div className="space-y-2">
               <Label>Adicionais</Label>
               <div className="space-y-2">
-                {product.extras.map((extra) => (
+                {product.extras.map((extra: ProductExtra) => (
                   <label
-                    key={extra}
-                    className="flex items-center gap-2 rounded-lg border border-border p-3 cursor-pointer hover:bg-secondary/50 transition-colors"
+                    key={extra.name}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-border p-3 cursor-pointer hover:bg-secondary/50 transition-colors"
                   >
-                    <Checkbox
-                      checked={selectedExtras.includes(extra)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          setSelectedExtras([...selectedExtras, extra]);
-                        } else {
-                          setSelectedExtras(selectedExtras.filter((e) => e !== extra));
-                        }
-                      }}
-                    />
-                    <span>{extra}</span>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        checked={selectedExtras.some((e) => e.name === extra.name)}
+                        onCheckedChange={(checked) => handleToggleExtra(extra, !!checked)}
+                      />
+                      <span>{extra.name}</span>
+                    </div>
+                    <span className="text-sm font-medium text-primary">
+                      +{formatCurrency(extra.price)}
+                    </span>
                   </label>
                 ))}
               </div>
@@ -189,16 +205,21 @@ export function TableServiceModal({ table, onClose }: TableServiceModalProps) {
     setSelectedProduct(product);
   };
 
-  const handleConfirmAddProduct = (quantity: number, extras: string[], notes?: string) => {
+  const handleConfirmAddProduct = (quantity: number, selectedExtras: SelectedExtra[], notes?: string) => {
     if (!activeOrder || !selectedProduct) return;
+
+    const extrasTotal = selectedExtras.reduce((sum, e) => sum + e.price, 0);
+    const unitPrice = selectedProduct.price + extrasTotal;
+    const totalPrice = unitPrice * quantity;
 
     addItem.mutate({
       order_id: activeOrder.id,
       product_id: selectedProduct.id,
       quantity,
-      extras,
-      unit_price: selectedProduct.price,
-      total_price: selectedProduct.price * quantity,
+      selected_extras: selectedExtras,
+      base_price_at_order: selectedProduct.price,
+      unit_price: unitPrice,
+      total_price: totalPrice,
       notes,
     });
     setSelectedProduct(null);
@@ -288,7 +309,7 @@ export function TableServiceModal({ table, onClose }: TableServiceModalProps) {
                           <h4 className="font-medium text-foreground">{product.name}</h4>
                           {product.extras && product.extras.length > 0 && (
                             <p className="text-xs text-muted-foreground">
-                              Adicionais: {product.extras.join(', ')}
+                              Adicionais: {product.extras.map((e: ProductExtra) => e.name).join(', ')}
                             </p>
                           )}
                         </div>
@@ -338,12 +359,12 @@ export function TableServiceModal({ table, onClose }: TableServiceModalProps) {
                                 <span className="font-medium text-foreground truncate">
                                   {item.product?.name}
                                 </span>
-                                {item.extras && item.extras.length > 0 && (
-                                  <span className="text-xs text-muted-foreground">
-                                    +{item.extras.join(', ')}
-                                  </span>
-                                )}
                               </div>
+                              {item.selected_extras && item.selected_extras.length > 0 && (
+                                <p className="text-xs text-muted-foreground">
+                                  +{item.selected_extras.map((e: SelectedExtra) => `${e.name} (${formatCurrency(e.price)})`).join(', ')}
+                                </p>
+                              )}
                               {item.notes && (
                                 <p className="text-xs text-muted-foreground truncate">
                                   {item.notes}

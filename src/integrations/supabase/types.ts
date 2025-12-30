@@ -16,37 +16,40 @@ export type Database = {
     Tables: {
       order_items: {
         Row: {
+          base_price_at_order: number
           created_at: string
-          extras: string[] | null
           id: string
           notes: string | null
           order_id: string
           product_id: string
           quantity: number
+          selected_extras: Json | null
           total_price: number
           unit_price: number
           updated_at: string
         }
         Insert: {
+          base_price_at_order?: number
           created_at?: string
-          extras?: string[] | null
           id?: string
           notes?: string | null
           order_id: string
           product_id: string
           quantity?: number
+          selected_extras?: Json | null
           total_price: number
           unit_price: number
           updated_at?: string
         }
         Update: {
+          base_price_at_order?: number
           created_at?: string
-          extras?: string[] | null
           id?: string
           notes?: string | null
           order_id?: string
           product_id?: string
           quantity?: number
+          selected_extras?: Json | null
           total_price?: number
           unit_price?: number
           updated_at?: string
@@ -106,7 +109,7 @@ export type Database = {
       products: {
         Row: {
           created_at: string
-          extras: string[] | null
+          extras: Json | null
           id: string
           name: string
           price: number
@@ -114,7 +117,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          extras?: string[] | null
+          extras?: Json | null
           id?: string
           name: string
           price?: number
@@ -122,7 +125,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          extras?: string[] | null
+          extras?: Json | null
           id?: string
           name?: string
           price?: number
