@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Table, TableStatus } from '@/types/database';
@@ -18,6 +19,28 @@ export function useTables() {
       return data as Table[];
     },
   });
+
+  // Realtime subscription for tables updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('tables-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tables'
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['tables'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const createTable = useMutation({
     mutationFn: async (identifier: string) => {
