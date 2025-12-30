@@ -248,14 +248,18 @@ export function TableServiceModal({ table, onClose }: TableServiceModalProps) {
     toast.success('Conta marcada como paga!');
   };
 
-  const handleFinalize = () => {
+  const handleFinalize = async () => {
     if (!activeOrder || !table) return;
     
-    updateOrderStatus.mutate({ id: activeOrder.id, status: 'closed' });
-    updateTableStatus.mutate({ id: table.id, status: 'available' });
-    setShowFinalizeConfirm(false);
-    toast.success('Atendimento finalizado!');
-    onClose();
+    try {
+      await updateOrderStatus.mutateAsync({ id: activeOrder.id, status: 'closed' });
+      await updateTableStatus.mutateAsync({ id: table.id, status: 'available' });
+      setShowFinalizeConfirm(false);
+      toast.success('Atendimento finalizado!');
+      onClose();
+    } catch (error) {
+      toast.error('Erro ao finalizar atendimento');
+    }
   };
 
   const isPaid = activeOrder?.status === 'paid';
