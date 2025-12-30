@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -7,26 +7,35 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { ProductExtra } from '@/types/database';
+import { Product, ProductExtra } from '@/types/database';
 
-interface CreateProductDialogProps {
-  onSubmit: (product: { name: string; price: number; extras: ProductExtra[] }) => void;
+interface EditProductDialogProps {
+  product: Product | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (product: { id: string; name: string; price: number; extras: ProductExtra[] }) => void;
   isLoading?: boolean;
 }
 
-export function CreateProductDialog({ onSubmit, isLoading }: CreateProductDialogProps) {
-  const [open, setOpen] = useState(false);
+export function EditProductDialog({ product, open, onOpenChange, onSubmit, isLoading }: EditProductDialogProps) {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [extraName, setExtraName] = useState('');
   const [extraPrice, setExtraPrice] = useState('');
   const [extras, setExtras] = useState<ProductExtra[]>([]);
+
+  useEffect(() => {
+    if (product) {
+      setName(product.name);
+      setPrice(product.price.toString());
+      setExtras(product.extras ?? []);
+    }
+  }, [product]);
 
   const handleAddExtra = () => {
     if (extraName.trim()) {
@@ -48,14 +57,14 @@ export function CreateProductDialog({ onSubmit, isLoading }: CreateProductDialog
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim() && price) {
+    if (product && name.trim() && price) {
       onSubmit({
+        id: product.id,
         name: name.trim(),
         price: parseFloat(price),
         extras,
       });
-      resetForm();
-      setOpen(false);
+      onOpenChange(false);
     }
   };
 
@@ -69,28 +78,22 @@ export function CreateProductDialog({ onSubmit, isLoading }: CreateProductDialog
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
-      setOpen(isOpen);
+      onOpenChange(isOpen);
       if (!isOpen) resetForm();
     }}>
-      <DialogTrigger asChild>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Produto
-        </Button>
-      </DialogTrigger>
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Criar Novo Produto</DialogTitle>
+            <DialogTitle>Editar Produto</DialogTitle>
             <DialogDescription>
-              Adicione um novo item ao cardápio.
+              Altere as informações do produto. Pedidos existentes não serão afetados.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label htmlFor="name">Nome do Produto</Label>
+              <Label htmlFor="edit-name">Nome do Produto</Label>
               <Input
-                id="name"
+                id="edit-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ex: X-Burger, Coca-Cola..."
@@ -99,9 +102,9 @@ export function CreateProductDialog({ onSubmit, isLoading }: CreateProductDialog
               />
             </div>
             <div>
-              <Label htmlFor="price">Preço Base (R$)</Label>
+              <Label htmlFor="edit-price">Preço Base (R$)</Label>
               <Input
-                id="price"
+                id="edit-price"
                 type="number"
                 step="0.01"
                 min="0"
@@ -112,7 +115,7 @@ export function CreateProductDialog({ onSubmit, isLoading }: CreateProductDialog
               />
             </div>
             <div>
-              <Label>Adicionais (opcional)</Label>
+              <Label>Adicionais</Label>
               <div className="mt-2 flex gap-2">
                 <Input
                   value={extraName}
@@ -164,11 +167,11 @@ export function CreateProductDialog({ onSubmit, isLoading }: CreateProductDialog
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
             <Button type="submit" disabled={!name.trim() || !price || isLoading}>
-              Criar Produto
+              Salvar Alterações
             </Button>
           </DialogFooter>
         </form>

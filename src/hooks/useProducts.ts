@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Product } from '@/types/database';
+import { Product, ProductExtra } from '@/types/database';
 import { toast } from 'sonner';
+import { Json } from '@/integrations/supabase/types';
 
 export function useProducts() {
   const queryClient = useQueryClient();
@@ -15,18 +16,21 @@ export function useProducts() {
         .order('name');
       
       if (error) throw error;
-      return data as Product[];
+      return (data ?? []).map(item => ({
+        ...item,
+        extras: (item.extras as unknown as ProductExtra[]) ?? []
+      })) as Product[];
     },
   });
 
   const createProduct = useMutation({
-    mutationFn: async (product: { name: string; price: number; extras?: string[] }) => {
+    mutationFn: async (product: { name: string; price: number; extras?: ProductExtra[] }) => {
       const { data, error } = await supabase
         .from('products')
         .insert({
           name: product.name,
           price: product.price,
-          extras: product.extras ?? [],
+          extras: (product.extras ?? []) as unknown as Json,
         })
         .select()
         .single();
@@ -44,10 +48,14 @@ export function useProducts() {
   });
 
   const updateProduct = useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<Product> & { id: string }) => {
+    mutationFn: async ({ id, name, price, extras }: { id: string; name: string; price: number; extras: ProductExtra[] }) => {
       const { data, error } = await supabase
         .from('products')
-        .update(updates)
+        .update({ 
+          name, 
+          price, 
+          extras: extras as unknown as Json 
+        })
         .eq('id', id)
         .select()
         .single();

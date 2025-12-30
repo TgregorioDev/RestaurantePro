@@ -1,4 +1,4 @@
-import { Product } from '@/types/database';
+import { Product, ProductExtra } from '@/types/database';
 import { formatCurrency } from '@/lib/utils';
 import { Edit, Trash2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -35,12 +35,12 @@ export function ProductCard({ product, onEdit, onDelete, onAdd, showActions = tr
           </p>
           {product.extras && product.extras.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
-              {product.extras.map((extra, index) => (
+              {product.extras.map((extra: ProductExtra, index: number) => (
                 <span
                   key={index}
                   className="rounded-md bg-secondary px-2 py-0.5 text-xs text-secondary-foreground"
                 >
-                  {extra}
+                  {extra.name} {extra.price > 0 && `(+${formatCurrency(extra.price)})`}
                 </span>
               ))}
             </div>
